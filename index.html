@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trombinoscope Arche</title>
+    <style>
+        :root {
+            --color-background: #fcfcf9;
+            --color-surface: #fffffe;
+            --color-text: #13343b;
+            --color-text-secondary: #626c71;
+            --color-primary: #21808d;
+            --color-primary-hover: #1d7480;
+            --color-border: rgba(94, 82, 64, 0.2);
+            --color-card-border: rgba(94, 82, 64, 0.12);
+            --color-error: #c0152f;
+            --color-success: #21808d;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: #1f2121;
+                --color-surface: #262828;
+                --color-text: #f5f5f5;
+                --color-text-secondary: rgba(167, 169, 169, 0.7);
+                --color-primary: #32b8c6;
+                --color-primary-hover: #2da6b2;
+                --color-border: rgba(119, 124, 124, 0.3);
+                --color-card-border: rgba(119, 124, 124, 0.2);
+                --color-error: #ff5459;
+                --color-success: #32b8c6;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+        }
+        .header h1 { font-size: 2rem; font-weight: 600; }
+        .header-actions { display: flex; gap: 1rem; flex-wrap: wrap; }            .order-indicator {
+            position: absolute; top: 0.5rem; left: 0.5rem;
+            background-color: var(--color-primary); color: white;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 600;
+        }
+
+        @media print {
+            .order-indicator { display: none !important; }
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem; border: none; border-radius: 8px;
+            font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 250ms ease;
+        }
+        .btn-primary { background-color: var(--color-primary); color: white; }
+        .btn-primary:hover { background-color: var(--color-primary-hover); }
+        .btn-secondary { background-color: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+        .btn-secondary:hover { background-color: var(--color-primary); color: white; }
+        .btn-danger { background-color: var(--color-error); color: white; }
+        .btn-danger:hover { opacity: 0.9; }
+
+        .search-filter-bar {
+            background-color: var(--color-surface); padding: 1.5rem; border-radius: 8px;
+            border: 1px solid var(--color-card-border); margin-bottom: 2rem;
+            display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+        }
+        .search-filter-bar input, .search-filter-bar select {
+            flex: 1; min-width: 200px; padding: 0.75rem 1rem; font-size: 1rem;
+            border: 1px solid var(--color-border); border-radius: 8px;
+            background-color: var(--color-background); color: var(--color-text);
+        }
+        .search-filter-bar input:focus, .search-filter-bar select:focus {
+            outline: 2px solid var(--color-primary); border-color: var(--color-primary);
+        }
+
+        .trombinoscope {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem;
+        }
+
+        .person-card {
+            background-color: var(--color-surface); border: 1px solid var(--color-card-border);
+            border-radius: 12px; padding: 1.5rem; text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 300ms ease;
+            cursor: move; position: relative;
+        }
+        .person-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .person-card.dragging { opacity: 0.5; }
+        .person-card.drag-over { border: 2px dashed var(--color-primary); }
+
+        .card-actions {
+            position: absolute; top: 0.75rem; right: 0.75rem;
+            display: flex; gap: 0.5rem; opacity: 0; transition: opacity 200ms ease;
+        }
+        .person-card:hover .card-actions { opacity: 1; }
+
+        .card-action-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer;
+            font-size: 1rem; display: flex; align-items: center; justify-content: center;
+            transition: all 200ms ease;
+        }
+        .card-action-btn.edit { background-color: var(--color-primary); color: white; }
+        .card-action-btn.delete { background-color: var(--color-error); color: white; }
+
+        .avatar {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+            margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; color: white; font-weight: 600; overflow: hidden;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+
+        .person-name { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text); }
+        .person-info { font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 0.25rem; }
+
+        .site-badge {
+            display: inline-block; padding: 0.25rem 0.75rem;
+            background-color: var(--color-primary); color: white;
+            border-radius: 20px; font-size: 0.75rem; font-weight: 500; margin-top: 0.5rem;
+        }
+
+        @media print {
+            .site-badge { display: none !important; }
+        }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); z-index: 1000;
+            align-items: center; justify-content: center; overflow-y: auto; padding: 2rem;
+        }
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background-color: var(--color-surface); border-radius: 12px; padding: 2rem;
+            max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;
+        }
+        .modal-close {
+            position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+            font-size: 1.5rem; cursor: pointer; color: var(--color-text-secondary); padding: 0.5rem; line-height: 1;
+        }
+        .modal-close:hover { color: var(--color-text); }
+        .modal h2 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--color-text); }
+        .form-group input, .form-group select {
+            width: 100%; padding: 0.75rem 1rem; font-size: 1rem;
+            border: 1px solid var(--color-border); border-radius: 8px;
+            background-color: var(--color-background); color: var(--color-text);
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: 2px solid var(--color-primary); border-color: var(--color-primary);
+        }
+
+        .photo-upload { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        .photo-preview {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            color: white; font-size: 3rem; font-weight: 600;
+        }
+        .photo-preview img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; }
+        .file-input-wrapper input[type=file] { position: absolute; left: -9999px; }
+        .file-input-label {
+            display: inline-block; padding: 0.75rem 1.5rem;
+            background-color: var(--color-surface); border: 1px solid var(--color-border);
+            border-radius: 8px; cursor: pointer; transition: all 250ms ease;
+        }
+        .file-input-label:hover { background-color: var(--color-primary); color: white; }
+
+        .form-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--color-text-secondary); }
+        .empty-state p { font-size: 1.125rem; margin-bottom: 0.5rem; }
+
+        .pagination {
+            display: flex; justify-content: center; align-items: center;
+            gap: 1rem; margin: 2rem 0; flex-wrap: wrap;
+        }
+        .pagination-btn {
+            padding: 0.5rem 1rem; background-color: var(--color-surface); color: var(--color-text);
+            border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer;
+            transition: all 250ms ease; font-size: 0.875rem;
+        }
+        .pagination-btn:hover:not(:disabled) { background-color: var(--color-primary); color: white; }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination-btn.active { background-color: var(--color-primary); color: white; }
+
+        .print-area { display: none; }
+
+        @media print {
+            @page { margin: 1.5cm; }
+            body { background: white; padding: 0; margin: 0; }
+            .container { max-width: 100%; }
+            .header, .search-filter-bar, .pagination, .no-print { display: none !important; }
+            .print-area { display: block !important; padding: 1cm; }
+            .print-header { 
+                text-align: center; margin-bottom: 3rem; page-break-after: avoid;
+                color: #13343b; font-family: Arial, sans-serif;
+            }
+            .print-header h1 { 
+                font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: 700;
+                color: #13343b;
+            }
+            .print-header .subtitle {
+                font-size: 1rem; color: #626c71; margin-top: 0.5rem;
+            }
+            .print-site-section {
+                page-break-inside: avoid; margin-bottom: 3rem;
+            }
+            .print-site-title {
+                font-size: 1.75rem; font-weight: 700; color: #13343b;
+                margin-bottom: 1.5rem; text-align: center;
+            }
+            .print-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 1.5rem;
+                justify-items: center;
+                margin-bottom: 2rem;
+            }
+            .print-person-card {
+                text-align: center; page-break-inside: avoid;
+                width: 140px;
+            }
+            .print-avatar {
+                width: 140px; height: 180px; 
+                border: 2px solid #ddd;
+                margin-bottom: 0.75rem;
+                overflow: hidden;
+                background: #f5f5f5;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .print-avatar img {
+                width: 100%; height: 100%;
+                object-fit: cover; object-position: center 20%;
+            }
+            .print-avatar-initials {
+                font-size: 3rem; font-weight: 600;
+                color: #21808d;
+            }
+            .print-person-name {
+                font-size: 0.875rem; font-weight: 600;
+                color: #13343b; margin-bottom: 0.25rem;
+                line-height: 1.2;
+            }
+            .print-person-role {
+                font-size: 0.75rem; color: #e67e22;
+                font-style: italic;
+            }
+            .card-actions { display: none !important; }
+            .person-card:hover { transform: none; box-shadow: none; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .header h1 { font-size: 1.5rem; }
+            .trombinoscope { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+            .avatar { width: 100px; height: 100px; font-size: 2.5rem; }
+            .modal-content { padding: 1.5rem; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <script>
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://bmtjgfnzzfducjtmmeiz.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtdGpnZm56emZkdWNqdG1tZWl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzY3NzQsImV4cCI6MjA4Njg1Mjc3NH0.AQGU4hBboo_rNT6kK036RYmMRn8GjXjaPaLKD3rNEag'
+        );
+
+        window.people = [];
+        let filteredPeople = [];
+        let currentPage = 1;
+        const itemsPerPage = 12;
+        let selectedPhoto = null;
+        let editingPerson = null;
+
+        async function loadPeople() {
+            const { data, error } = await supabaseClient
+                .from('people')
+                .select('*')
+                .order('displayOrder', { ascending: true, nullsFirst: false })
+                .order('lastName', { ascending: true });
+
+            if (error) {
+                console.error('Erreur:', error);
+                return;
+            }
+
+            window.people = data || [];
+            filterAndRender();
+        }
+
+        supabaseClient
+            .channel('people-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'people' }, () => {
+                loadPeople();
+            })
+            .subscribe();
+
+        loadPeople();
+    </script>
+
+    <div class="container">
+        <div class="header no-print">
+            <h1>📋 Trombinoscope Arche</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openAddModal()">➕ Ajouter</button>
+                <button class="btn btn-secondary" onclick="openPrintModal()">🖨️ Imprimer</button>
+            </div>
+        </div>
+
+        <div class="search-filter-bar no-print">
+            <input type="text" id="searchInput" placeholder="🔍 Rechercher par nom, prénom, poste..." oninput="filterAndRender()">
+            <select id="siteFilter" onchange="filterAndRender()">
+                <option value="">Tous les sites</option>
+                <option value="Conseil d'Administration">Conseil d'Administration</option>
+                <option value="Bureau et Services généraux">Bureau et Services généraux</option>
+                <option value="Service d'Accueil de Jour">Service d'Accueil de Jour</option>
+                <option value="Équipe du Service d'Accueil de Jour">Équipe du Service d'Accueil de Jour</option>
+                <option value="Foyer Caravelle">Foyer Caravelle</option>
+                <option value="Foyer Menorah">Foyer Menorah</option>
+                <option value="Foyer Eneko">Foyer Eneko</option>
+                <option value="Ruche">Ruche</option>
+            </select>
+        </div>
+
+        <div id="trombinoscope" class="trombinoscope"></div>
+
+        <div class="pagination no-print" id="pagination" style="display: none;">
+            <button class="pagination-btn" onclick="previousPage()">◀️ Précédent</button>
+            <span id="pageInfo" style="color: var(--color-text-secondary);"></span>
+            <button class="pagination-btn" onclick="nextPage()">Suivant ▶️</button>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <p>Aucune personne dans le trombinoscope</p>
+            <small>Cliquez sur "Ajouter" pour commencer</small>
+        </div>
+    </div>
+
+    <div class="print-area">
+        <div class="print-header">
+            <h1>Trombinoscope Arche</h1>
+            <p id="printSiteTitle"></p>
+        </div>
+        <div id="printTrombinoscope" class="trombinoscope"></div>
+    </div>
+
+    <div id="personModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('personModal')">&times;</button>
+            <h2 id="modalTitle">Ajouter une personne</h2>
+            <form id="personForm" onsubmit="savePerson(event)">
+                <input type="hidden" id="personId">
+                
+                <div class="form-group">
+                    <div class="photo-upload">
+                        <div class="photo-preview" id="photoPreview">
+                            <span id="previewInitials">?</span>
+                        </div>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="photoInput" accept="image/*" onchange="handlePhotoSelect(event)">
+                            <label for="photoInput" class="file-input-label">📷 Choisir une photo</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName">Nom *</label>
+                    <input type="text" id="lastName" required oninput="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label for="firstName">Prénom *</label>
+                    <input type="text" id="firstName" required oninput="updatePreview()">
+                </div>
+
+                <div class="form-group">
+                    <label for="position">Rôle *</label>
+                    <input type="text" id="position" required>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="printBottom" style="width: auto; cursor: pointer;">
+                        <span>Afficher en bas lors de l'impression</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="site">Site *</label>
+                    <select id="site" required>
+                        <option value="">Sélectionner un site</option>
+                        <option value="Conseil d'Administration">Conseil d'Administration</option>
+                        <option value="Bureau et Services généraux">Bureau et Services généraux</option>
+                        <option value="Service d'Accueil de Jour">Service d'Accueil de Jour</option>
+                        <option value="Équipe du Service d'Accueil de Jour">Équipe du Service d'Accueil de Jour</option>
+                        <option value="Foyer Caravelle">Foyer Caravelle</option>
+                        <option value="Foyer Menorah">Foyer Menorah</option>
+                        <option value="Foyer Eneko">Foyer Eneko</option>
+                        <option value="Ruche">Ruche</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('personModal')">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="printModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('printModal')">&times;</button>
+            <h2>⚙️ Configuration d'impression</h2>
+            
+            <div class="form-group">
+                <label for="printSiteFilter">Sélectionner le site à imprimer</label>
+                <select id="printSiteFilter">
+                    <option value="">Tous les sites</option>
+                    <option value="Conseil d'Administration">Conseil d'Administration</option>
+                    <option value="Bureau et Services généraux">Bureau et Services généraux</option>
+                    <option value="Service d'Accueil de Jour">Service d'Accueil de Jour</option>
+                    <option value="Équipe du Service d'Accueil de Jour">Équipe du Service d'Accueil de Jour</option>
+                    <option value="Foyer Caravelle">Foyer Caravelle</option>
+                    <option value="Foyer Menorah">Foyer Menorah</option>
+                    <option value="Foyer Eneko">Foyer Eneko</option>
+                    <option value="Ruche">Ruche</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="printTitleText">Texte du titre principal</label>
+                <input type="text" id="printTitleText" value="Trombinoscope Arche" placeholder="Titre du document">
+            </div>
+
+            <div class="form-group">
+                <label for="printFontFamily">Police d'écriture</label>
+                <select id="printFontFamily">
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="'Courier New', monospace">Courier New</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                    <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="printTitleColor">Couleur du titre</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="color" id="printTitleColor" value="#13343b" style="width: 60px; height: 40px; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer;">
+                    <input type="text" id="printTitleColorHex" value="#13343b" placeholder="#000000" style="flex: 1;" oninput="syncColorFromHex()">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="printNameColor">Couleur des noms</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="color" id="printNameColor" value="#13343b" style="width: 60px; height: 40px; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer;">
+                    <input type="text" id="printNameColorHex" value="#13343b" placeholder="#000000" style="flex: 1;" oninput="syncNameColorFromHex()">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="printRoleColor">Couleur des rôles</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="color" id="printRoleColor" value="#e67e22" style="width: 60px; height: 40px; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer;">
+                    <input type="text" id="printRoleColorHex" value="#e67e22" placeholder="#000000" style="flex: 1;" oninput="syncRoleColorFromHex()">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('printModal')">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="printTrombinoscope()">🖨️ Imprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getInitials(firstName, lastName) {
+            const first = firstName ? firstName.charAt(0) : '';
+            const last = lastName ? lastName.charAt(0) : '';
+            return (first + last).toUpperCase() || '?';
+        }
+
+        function filterAndRender() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const siteFilter = document.getElementById('siteFilter').value;
+
+            filteredPeople = people.filter(person => {
+                const matchesSearch = !searchTerm || 
+                    (person.firstName || '').toLowerCase().includes(searchTerm) ||
+                    (person.lastName || '').toLowerCase().includes(searchTerm) ||
+                    (person.position || '').toLowerCase().includes(searchTerm);
+                const matchesSite = !siteFilter || person.site === siteFilter;
+                return matchesSearch && matchesSite;
+            });
+
+            currentPage = 1;
+            renderTrombinoscope();
+        }
+
+        function renderTrombinoscope() {
+            const container = document.getElementById('trombinoscope');
+            const emptyState = document.getElementById('emptyState');
+            const pagination = document.getElementById('pagination');
+
+            if (filteredPeople.length === 0) {
+                emptyState.style.display = 'block';
+                container.style.display = 'none';
+                pagination.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            container.style.display = 'grid';
+
+            const totalPages = Math.ceil(filteredPeople.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentPeople = filteredPeople.slice(startIndex, endIndex);
+
+            if (totalPages > 1) {
+                pagination.style.display = 'flex';
+                document.getElementById('pageInfo').textContent = `Page ${currentPage} / ${totalPages}`;
+            } else {
+                pagination.style.display = 'none';
+            }
+
+            container.innerHTML = '';
+
+            currentPeople.forEach((person, index) => {
+                const card = document.createElement('div');
+                card.className = 'person-card';
+                card.draggable = true;
+                card.dataset.personId = person.id;
+                
+                const avatarContent = person.photoUrl 
+                    ? `<img src="${person.photoUrl}" alt="${person.firstName} ${person.lastName}">`
+                    : getInitials(person.firstName, person.lastName);
+
+                const globalIndex = startIndex + index + 1;
+                card.innerHTML = `
+                    <div class="order-indicator">${globalIndex}</div>
+                    <div class="card-actions">
+                        <button class="card-action-btn edit" onclick="editPerson(${person.id})" title="Modifier">✏️</button>
+                        <button class="card-action-btn delete" onclick="deletePerson(${person.id})" title="Supprimer">🗑️</button>
+                    </div>
+                    <div class="avatar">${avatarContent}</div>
+                    <div class="person-name">${person.lastName} ${person.firstName}</div>
+                    <div class="person-info">${person.position || ''}</div>
+                    <div class="site-badge">${person.site}</div>
+                `;
+                
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragover', handleDragOver);
+                card.addEventListener('drop', handleDrop);
+                card.addEventListener('dragend', handleDragEnd);
+                
+                container.appendChild(card);
+            });
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredPeople.length / itemsPerPage);
+            if (currentPage < totalPages) { currentPage++; renderTrombinoscope(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) { currentPage--; renderTrombinoscope(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        }
+
+        function openAddModal() {
+            editingPerson = null;
+            selectedPhoto = null;
+            document.getElementById('modalTitle').textContent = 'Ajouter une personne';
+            document.getElementById('personForm').reset();
+            document.getElementById('personId').value = '';
+            document.getElementById('printBottom').checked = false;
+            document.getElementById('photoPreview').innerHTML = '<span id="previewInitials">?</span>';
+            document.getElementById('personModal').classList.add('active');
+        }
+
+        function editPerson(personId) {
+            const person = people.find(p => p.id === personId);
+            if (!person) return;
+
+            editingPerson = person;
+            selectedPhoto = null;
+
+            document.getElementById('modalTitle').textContent = 'Modifier la personne';
+            document.getElementById('personId').value = person.id;
+            document.getElementById('firstName').value = person.firstName || '';
+            document.getElementById('lastName').value = person.lastName || '';
+            document.getElementById('position').value = person.position || '';
+            document.getElementById('site').value = person.site || '';
+            document.getElementById('printBottom').checked = person.printBottom || false;
+
+            const preview = document.getElementById('photoPreview');
+            if (person.photoUrl) {
+                preview.innerHTML = `<img src="${person.photoUrl}" alt="${person.firstName} ${person.lastName}">`;
+            } else {
+                preview.innerHTML = `<span id="previewInitials">${getInitials(person.firstName, person.lastName)}</span>`;
+            }
+
+            document.getElementById('personModal').classList.add('active');
+        }
+
+        async function deletePerson(personId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette personne ?')) return;
+
+            const person = people.find(p => p.id === personId);
+            
+            try {
+                if (person?.photoUrl) {
+                    const photoPath = person.photoUrl.split('/').pop();
+                    await supabaseClient.storage.from('photos').remove([photoPath]);
+                }
+
+                const { error } = await supabaseClient
+                    .from('people')
+                    .delete()
+                    .eq('id', personId);
+
+                if (error) throw error;
+
+                alert('✅ Personne supprimée');
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('❌ Erreur: ' + error.message);
+            }
+        }
+
+        function handlePhotoSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5000000) {
+                alert('La photo est trop grande (max 5 Mo)');
+                return;
+            }
+
+            selectedPhoto = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('photoPreview').innerHTML = `<img src="${e.target.result}" alt="Aperçu">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updatePreview() {
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const preview = document.getElementById('photoPreview');
+            
+            if (!preview.querySelector('img') && !selectedPhoto) {
+                const initials = getInitials(firstName, lastName);
+                const initialsSpan = document.getElementById('previewInitials');
+                if (initialsSpan) {
+                    initialsSpan.textContent = initials;
+                }
+            }
+        }
+
+        async function savePerson(event) {
+            event.preventDefault();
+
+            const personId = document.getElementById('personId').value;
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const position = document.getElementById('position').value.trim();
+            const site = document.getElementById('site').value;
+
+            try {
+                let photoUrl = editingPerson?.photoUrl || null;
+
+                if (selectedPhoto) {
+                    try {
+                        const fileExt = selectedPhoto.name.split('.').pop();
+                        const fileName = `${Date.now()}.${fileExt}`;
+                        
+                        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                            .from('photos')
+                            .upload(fileName, selectedPhoto);
+
+                        if (uploadError) {
+                            console.warn('Erreur upload photo:', uploadError);
+                            alert('⚠️ Impossible d\'uploader la photo, mais la personne sera enregistrée sans photo');
+                            photoUrl = null;
+                        } else {
+                            const { data: { publicUrl } } = supabaseClient.storage
+                                .from('photos')
+                                .getPublicUrl(fileName);
+                            photoUrl = publicUrl;
+                        }
+                    } catch (photoError) {
+                        console.warn('Erreur photo:', photoError);
+                        alert('⚠️ Impossible d\'uploader la photo, mais la personne sera enregistrée sans photo');
+                        photoUrl = null;
+                    }
+                }
+
+                const personData = {
+                    firstName,
+                    lastName,
+                    position,
+                    site,
+                    photoUrl,
+                    printBottom: document.getElementById('printBottom').checked
+                };
+
+                if (personId) {
+                    const { error } = await supabaseClient
+                        .from('people')
+                        .update(personData)
+                        .eq('id', personId);
+
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabaseClient
+                        .from('people')
+                        .insert([personData]);
+
+                    if (error) throw error;
+                }
+
+                closeModal('personModal');
+                alert('✅ Enregistré avec succès !');
+            } catch (error) {
+                console.error('Erreur complète:', error);
+                alert('❌ Erreur lors de l\'enregistrement: ' + error.message);
+            }
+        }
+
+        function openPrintModal() {
+            document.getElementById('printModal').classList.add('active');
+            
+            // Synchronise les sélecteurs de couleur
+            const titleColor = document.getElementById('printTitleColor');
+            const titleColorHex = document.getElementById('printTitleColorHex');
+            titleColor.addEventListener('input', () => {
+                titleColorHex.value = titleColor.value;
+            });
+
+            const nameColor = document.getElementById('printNameColor');
+            const nameColorHex = document.getElementById('printNameColorHex');
+            nameColor.addEventListener('input', () => {
+                nameColorHex.value = nameColor.value;
+            });
+
+            const roleColor = document.getElementById('printRoleColor');
+            const roleColorHex = document.getElementById('printRoleColorHex');
+            roleColor.addEventListener('input', () => {
+                roleColorHex.value = roleColor.value;
+            });
+        }
+
+        function syncColorFromHex() {
+            const hex = document.getElementById('printTitleColorHex').value;
+            if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                document.getElementById('printTitleColor').value = hex;
+            }
+        }
+
+        function syncNameColorFromHex() {
+            const hex = document.getElementById('printNameColorHex').value;
+            if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                document.getElementById('printNameColor').value = hex;
+            }
+        }
+
+        function syncRoleColorFromHex() {
+            const hex = document.getElementById('printRoleColorHex').value;
+            if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                document.getElementById('printRoleColor').value = hex;
+            }
+        }
+
+        function printTrombinoscope() {
+            const printSite = document.getElementById('printSiteFilter').value;
+            const printContainer = document.getElementById('printTrombinoscope');
+            const printHeader = document.querySelector('.print-header');
+            
+            // Récupère les paramètres d'impression
+            const titleText = document.getElementById('printTitleText').value || 'Trombinoscope Arche';
+            const fontFamily = document.getElementById('printFontFamily').value;
+            const titleColor = document.getElementById('printTitleColor').value;
+            const nameColor = document.getElementById('printNameColor').value;
+            const roleColor = document.getElementById('printRoleColor').value;
+
+            let peopleToPrint = printSite 
+                ? people.filter(p => p.site === printSite)
+                : people;
+
+            // Sépare les personnes selon printBottom
+            const topPeople = peopleToPrint.filter(p => !p.printBottom).sort((a, b) => a.lastName.localeCompare(b.lastName));
+            const bottomPeople = peopleToPrint.filter(p => p.printBottom).sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+            // Applique les styles personnalisés
+            printHeader.innerHTML = `
+                <h1 style="font-family: ${fontFamily}; color: ${titleColor};">${titleText}</h1>
+            `;
+
+            printContainer.innerHTML = '';
+
+            // Si on filtre par site, crée une section
+            if (printSite) {
+                const siteSection = document.createElement('div');
+                siteSection.className = 'print-site-section';
+                
+                const siteTitle = document.createElement('h2');
+                siteTitle.className = 'print-site-title';
+                siteTitle.style.fontFamily = fontFamily;
+                siteTitle.style.color = titleColor;
+                siteTitle.textContent = printSite;
+                siteSection.appendChild(siteTitle);
+
+                const grid = document.createElement('div');
+                grid.className = 'print-grid';
+
+                [...topPeople, ...bottomPeople].forEach(person => {
+                    const card = document.createElement('div');
+                    card.className = 'print-person-card';
+                    
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'print-avatar';
+                    
+                    if (person.photoUrl) {
+                        const img = document.createElement('img');
+                        img.src = person.photoUrl;
+                        img.alt = `${person.firstName} ${person.lastName}`;
+                        avatarDiv.appendChild(img);
+                    } else {
+                        const initialsSpan = document.createElement('span');
+                        initialsSpan.className = 'print-avatar-initials';
+                        initialsSpan.textContent = getInitials(person.firstName, person.lastName);
+                        avatarDiv.appendChild(initialsSpan);
+                    }
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'print-person-name';
+                    nameDiv.style.fontFamily = fontFamily;
+                    nameDiv.style.color = nameColor;
+                    nameDiv.textContent = `${person.lastName} ${person.firstName}`;
+                    
+                    const roleDiv = document.createElement('div');
+                    roleDiv.className = 'print-person-role';
+                    roleDiv.style.fontFamily = fontFamily;
+                    roleDiv.style.color = roleColor;
+                    roleDiv.textContent = person.position || '';
+                    
+                    card.appendChild(avatarDiv);
+                    card.appendChild(nameDiv);
+                    card.appendChild(roleDiv);
+                    grid.appendChild(card);
+                });
+
+                siteSection.appendChild(grid);
+                printContainer.appendChild(siteSection);
+            } else {
+                // Impression tous sites - groupe par site
+                const sites = [...new Set(people.map(p => p.site))].sort();
+                
+                sites.forEach(site => {
+                    const sitePeople = people.filter(p => p.site === site);
+                    const siteTopPeople = sitePeople.filter(p => !p.printBottom).sort((a, b) => a.lastName.localeCompare(b.lastName));
+                    const siteBottomPeople = sitePeople.filter(p => p.printBottom).sort((a, b) => a.lastName.localeCompare(b.lastName));
+                    
+                    const siteSection = document.createElement('div');
+                    siteSection.className = 'print-site-section';
+                    
+                    const siteTitle = document.createElement('h2');
+                    siteTitle.className = 'print-site-title';
+                    siteTitle.style.fontFamily = fontFamily;
+                    siteTitle.style.color = titleColor;
+                    siteTitle.textContent = site;
+                    siteSection.appendChild(siteTitle);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'print-grid';
+
+                    [...siteTopPeople, ...siteBottomPeople].forEach(person => {
+                        const card = document.createElement('div');
+                        card.className = 'print-person-card';
+                        
+                        const avatarDiv = document.createElement('div');
+                        avatarDiv.className = 'print-avatar';
+                        
+                        if (person.photoUrl) {
+                            const img = document.createElement('img');
+                            img.src = person.photoUrl;
+                            img.alt = `${person.firstName} ${person.lastName}`;
+                            avatarDiv.appendChild(img);
+                        } else {
+                            const initialsSpan = document.createElement('span');
+                            initialsSpan.className = 'print-avatar-initials';
+                            initialsSpan.textContent = getInitials(person.firstName, person.lastName);
+                            avatarDiv.appendChild(initialsSpan);
+                        }
+                        
+                        const nameDiv = document.createElement('div');
+                        nameDiv.className = 'print-person-name';
+                        nameDiv.style.fontFamily = fontFamily;
+                        nameDiv.style.color = nameColor;
+                        nameDiv.textContent = `${person.lastName} ${person.firstName}`;
+                        
+                        const roleDiv = document.createElement('div');
+                        roleDiv.className = 'print-person-role';
+                        roleDiv.style.fontFamily = fontFamily;
+                        roleDiv.style.color = roleColor;
+                        roleDiv.textContent = person.position || '';
+                        
+                        card.appendChild(avatarDiv);
+                        card.appendChild(nameDiv);
+                        card.appendChild(roleDiv);
+                        grid.appendChild(card);
+                    });
+
+                    siteSection.appendChild(grid);
+                    printContainer.appendChild(siteSection);
+                });
+            }
+
+            closeModal('printModal');
+            setTimeout(() => window.print(), 100);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.currentTarget;
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const target = e.currentTarget;
+            if (target !== draggedElement) {
+                target.classList.add('drag-over');
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.person-card').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+        }
+
+        async function handleDrop(e) {
+            if (e.stopPropagation) e.stopPropagation();
+            e.preventDefault();
+
+            const target = e.currentTarget;
+            target.classList.remove('drag-over');
+
+            if (draggedElement !== target) {
+                const draggedId = parseInt(draggedElement.dataset.personId);
+                const targetId = parseInt(target.dataset.personId);
+
+                const draggedPerson = filteredPeople.find(p => p.id === draggedId);
+                const targetPerson = filteredPeople.find(p => p.id === targetId);
+
+                if (draggedPerson && targetPerson) {
+                    const draggedIndex = filteredPeople.indexOf(draggedPerson);
+                    const targetIndex = filteredPeople.indexOf(targetPerson);
+
+                    filteredPeople.splice(draggedIndex, 1);
+                    filteredPeople.splice(targetIndex, 0, draggedPerson);
+
+                    await updateDisplayOrder();
+                    renderTrombinoscope();
+                }
+            }
+
+            return false;
+        }
+
+        async function updateDisplayOrder() {
+            // Sauvegarde l'ordre dans la base de données
+            const updates = filteredPeople.map((person, index) => 
+                supabaseClient
+                    .from('people')
+                    .update({ displayOrder: index })
+                    .eq('id', person.id)
+            );
+            
+            try {
+                await Promise.all(updates);
+                console.log('✅ Ordre sauvegardé');
+            } catch (e) {
+                console.warn('Impossible de sauvegarder l\'ordre:', e);
+                alert('⚠️ Erreur lors de la sauvegarde de l\'ordre');
+            }
+            
+            renderTrombinoscope();
+        }
+    </script>
+</body>
+</html>
