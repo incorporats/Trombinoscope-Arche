@@ -232,12 +232,10 @@
             }
             .print-grid {
                 display: block !important;
-                flex-wrap: wrap !important;
-                gap: 1rem;
                 margin-bottom: 2rem;
-                justify-content: flex-start;
-
-                 .print-person-card {
+            }
+    
+            .print-person-card {
                 text-align: center;
                 page-break-inside: avoid;
                 display: inline-block !important;
@@ -249,14 +247,15 @@
                 border-radius: 8px;
                 padding: 0.75rem;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-                  .person-card {
-                    display: inline-block !important;
-                    width: 150px !important;
-                    margin: 0.5rem !important;
-                    vertical-align: top;
             }
+    
+            .person-card {
+                display: inline-block !important;
+                width: 150px !important;
+                margin: 0.5rem !important;
+                vertical-align: top;
             }
+            
             .print-avatar {
                 width: 80px; height: 80px; 
                 border-radius: 50%;
@@ -291,7 +290,7 @@
         }
 
         @media (max-width: 768px) {
-            body { padding: 1rem; }
+            .body { padding: 1rem; }
             .header { flex-direction: column; align-items: flex-start; }
             .header h1 { font-size: 1.5rem; }
             .trombinoscope { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
