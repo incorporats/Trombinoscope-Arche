@@ -230,12 +230,14 @@
                 font-size: 1.75rem; font-weight: 700; color: #13343b;
                 margin-bottom: 1.5rem; text-align: center;
             }
-            .print-grid {
-                display: flex;
-                flex-wrap: wrap;
+            ..print-grid {
+                display: flex !important;
+                flex-wrap: wrap !important;
                 gap: 1rem;
                 margin-bottom: 2rem;
                 justify-content: flex-start;
+}
+
             }
             .print-person-card {
                 text-align: center; page-break-inside: avoid;
