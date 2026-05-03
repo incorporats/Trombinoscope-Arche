@@ -478,6 +478,12 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="printLogo">Logo (facultatif)</label>
+                    <input type="file" id="printLogo" accept="image/*" onchange="handlePrintLogoUpload(event)">
+                    <img id="printLogoPreview" style="max-width: 120px; margin-top: 10px; display: none; border-radius: 4px;">
+                </div>
+
+                <div class="form-group">
                     <label for="printTitle">Titre de la page</label>
                     <input type="text" id="printTitle" value="Trombinoscope">
                 </div>
@@ -527,7 +533,7 @@
         "Ruche",
         "Conseil d'administration"
     ];
-
+    let printLogoDataUrl = "";
     let people = [];              // tableau des personnes
     let draggedElement = null;    // pour le drag & drop
     const STORAGE_KEY = "trombi_people_v1"; // clé de sauvegarde locale
@@ -649,6 +655,24 @@
         };
         reader.readAsDataURL(file);
     }
+
+    function handlePrintLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        printLogoDataUrl = "";
+        document.getElementById("printLogoPreview").style.display = "none";
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        printLogoDataUrl = e.target.result; // dataURL du logo
+        const img = document.getElementById("printLogoPreview");
+        img.src = printLogoDataUrl;
+        img.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+}
 
     // ---------- SAUVEGARDE / SUPPRESSION D'UNE PERSONNE ----------
 
