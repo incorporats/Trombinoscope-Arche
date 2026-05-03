@@ -516,459 +516,239 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/appwrite@16"></script>
     <script>
-        const sites = [
-            'Foyer Eneko',
-            'Foyer Caravelle',
-            'Foyer Ménorah',
-            'Equipe service activités de jour',
-            'Externe activités de jour',
-            'Bureau et services généraux',
-            'Ruche',
-            'Conseil d\'administration'
-        ];
+    const sites = [
+        "Foyer Eneko",
+        "Foyer Caravelle",
+        "Foyer Ménorah",
+        "Equipe service activités de jour",
+        "Externe activités de jour",
+        "Bureau et services généraux",
+        "Ruche",
+        "Conseil d'administration"
+    ];
 
-        let people = [];
-        let draggedElement = null;
+    let people = [];              // tableau des personnes
+    let draggedElement = null;    // pour le drag & drop
+    const STORAGE_KEY = "trombi_people_v1"; // clé de sauvegarde locale
 
-        const client = new Appwrite.Client()
-            .setEndpoint('https://fra.cloud.appwrite.io/v1')
-            .setProject('699818920014f4aee948')
-            .setSelfSigned(true);
+    // ---------- SAUVEGARDE / CHARGEMENT LOCAL ----------
 
-        const databases = new Appwrite.Databases(client);
-        const DATABASE_ID = '69981a120009d2270b46';
-        const COLLECTION_ID = 'people';
-        const BUCKET_ID = 'photos';
-        
-        let storage;
-        
-        async function initStorage() {
-            storage = new Appwrite.Storage(client);
+    function saveAll() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+        } catch (e) {
+            console.error("Erreur lors de la sauvegarde locale :", e);
         }
+    }
 
-        initStorage();
-
-                if (photoInput.files && photoInput.files[0] && imagePreview.dataset.file === 'pending') {
-                    const file = photoInput.files[0];
-                    const fileId = Appwrite.ID.unique();
-                    
-                    if (!storage) {
-                        await initStorage();
-                    }
-                    
-                    const uploadedFile = await storage.createFile(
-                        BUCKET_ID,
-                        fileId,
-                        file
-                    );
-
-        async function loadData() {
-            try {
-                const response = await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
-                people = response.documents.map(doc => ({
-                    id: doc.$id,
-                    firstName: doc.firstName,
-                    lastName: doc.lastName,
-                    position: doc.position,
-                    photo: doc.photo || '',
-                    sites: doc.sites,
-                    secondLine: doc.secondLine || false
-                }));
-                renderCards();
-            } catch (error) {
-                console.error('Erreur lors du chargement:', error);
-                people = [];
-                renderCards();
-            }
-        }
-
-        function subscribeToChanges() {
-            client.subscribe(`databases.${DATABASE_ID}.collections.${COLLECTION_ID}.documents`, response => {
-                loadData();
-            });
-        }
-
-        function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Ajouter une personne';
-            document.getElementById('personForm').reset();
-            document.getElementById('personId').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('secondLine').checked = false;
-            renderSiteCheckboxes();
-            document.getElementById('personModal').classList.add('active');
-        }
-
-        function openEditModal(id) {
-            const person = people.find(p => p.id === id);
-            if (!person) return;
-
-            document.getElementById('modalTitle').textContent = 'Modifier une personne';
-            document.getElementById('personId').value = person.id;
-            document.getElementById('firstName').value = person.firstName;
-            document.getElementById('lastName').value = person.lastName;
-            document.getElementById('position').value = person.position;
-            document.getElementById('secondLine').checked = person.secondLine || false;
-
-            if (person.photo) {
-                document.getElementById('imagePreview').src = person.photo;
-                document.getElementById('imagePreview').style.display = 'block';
-            }
-
-            renderSiteCheckboxes(person.sites);
-            document.getElementById('personModal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('personModal').classList.remove('active');
-        }
-
-        function renderSiteCheckboxes(selectedSites = []) {
-            const container = document.getElementById('sitesCheckboxes');
-            container.innerHTML = '';
-
-            sites.forEach(site => {
-                const label = document.createElement('label');
-                label.className = 'checkbox-label';
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = site;
-                checkbox.checked = selectedSites.includes(site);
-                checkbox.onchange = () => limitSiteSelection();
-
-                const span = document.createElement('span');
-                span.textContent = site;
-
-                label.appendChild(checkbox);
-                label.appendChild(span);
-                container.appendChild(label);
-            });
-        }
-
-        function limitSiteSelection() {
-            const checkboxes = document.querySelectorAll('#sitesCheckboxes input[type="checkbox"]');
-            const checked = Array.from(checkboxes).filter(cb => cb.checked);
-
-            if (checked.length > 2) {
-                checked[checked.length - 1].checked = false;
-                alert('Vous ne pouvez sélectionner que 2 sites maximum.');
-            }
-        }
-
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreview').style.display = 'block';
-                document.getElementById('imagePreview').dataset.file = 'pending';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function savePerson(event) {
-            event.preventDefault();
-
-            const id = document.getElementById('personId').value;
-            const firstName = document.getElementById('firstName').value.trim();
-            const lastName = document.getElementById('lastName').value.trim();
-            const position = document.getElementById('position').value.trim();
-            const secondLine = document.getElementById('secondLine').checked;
-
-            const checkboxes = document.querySelectorAll('#sitesCheckboxes input[type="checkbox"]:checked');
-            const selectedSites = Array.from(checkboxes).map(cb => cb.value);
-
-            if (selectedSites.length === 0) {
-                alert('Veuillez sélectionner au moins un site.');
-                return;
-            }
-
-            let photoUrl = '';
-            const imagePreview = document.getElementById('imagePreview');
-            const photoInput = document.getElementById('photo');
-
-            try {
-                if (photoInput.files && photoInput.files[0] && imagePreview.dataset.file === 'pending') {
-                    const file = photoInput.files[0];
-                    const fileId = Appwrite.ID.unique();
-                    
-                    const uploadedFile = await storage.createFile(
-                        BUCKET_ID,
-                        fileId,
-                        file
-                    );
-                    
-                    photoUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${uploadedFile.$id}/view?project=699818920014f4aee948`;
-                } else if (imagePreview.src && imagePreview.src.startsWith('http')) {
-                    photoUrl = imagePreview.src;
-                }
-
-                const personData = {
-                    firstName,
-                    lastName,
-                    position,
-                    photo: photoUrl,
-                    sites: selectedSites,
-                    secondLine: secondLine
-                };
-
-                if (id) {
-                    await databases.updateDocument(DATABASE_ID, COLLECTION_ID, id, personData);
-                } else {
-                    await databases.createDocument(
-                        DATABASE_ID, 
-                        COLLECTION_ID, 
-                        Appwrite.ID.unique(), 
-                        personData
-                    );
-                }
-                closeModal();
-                await loadData();
-            } catch (error) {
-                console.error('Erreur complète:', error);
-                let errorMsg = 'Erreur lors de la sauvegarde:\n\n';
-                errorMsg += 'Type: ' + error.type + '\n';
-                errorMsg += 'Code: ' + error.code + '\n';
-                errorMsg += 'Message: ' + error.message + '\n\n';
-                errorMsg += 'Vérifiez:\n';
-                errorMsg += '1. Les permissions "Any" sur le bucket Storage\n';
-                errorMsg += '2. Les permissions "Any" sur la collection\n';
-                errorMsg += '3. Le domaine autorisé dans Appwrite Settings';
-                alert(errorMsg);
-            }
-        }
-
-        async function deletePerson(id) {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer cette personne ?')) return;
-
-            try {
-                await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
-                await loadData();
-            } catch (error) {
-                console.error('Erreur lors de la suppression:', error);
-                alert('Erreur lors de la suppression.');
-            }
-        }
-
-        function filterBySite() {
-            const filter = document.getElementById('siteFilter').value;
-            renderCards(filter);
-        }
-
-        function renderCards(filter = 'all') {
-            const container = document.getElementById('cardsContainer');
-            container.innerHTML = '';
-
-            const filteredPeople = filter === 'all' 
-                ? people 
-                : people.filter(p => p.sites.includes(filter));
-
-            const firstLine = filteredPeople.filter(p => !p.secondLine);
-            const secondLine = filteredPeople.filter(p => p.secondLine);
-            const orderedPeople = [...firstLine, ...secondLine];
-
-            orderedPeople.forEach(person => {
-                const card = document.createElement('div');
-                card.className = 'person-card';
-                card.draggable = true;
-                card.dataset.id = person.id;
-
-                card.addEventListener('dragstart', handleDragStart);
-                card.addEventListener('dragend', handleDragEnd);
-                card.addEventListener('dragover', handleDragOver);
-                card.addEventListener('drop', handleDrop);
-                card.addEventListener('dragleave', handleDragLeave);
-
-                const img = person.photo 
-                    ? `<img src="${person.photo}" alt="${person.firstName} ${person.lastName}" class="card-image">`
-                    : `<div class="card-image"></div>`;
-
-                const siteTags = person.sites.map(site => 
-                    `<span class="site-tag">${site}</span>`
-                ).join('');
-
-                card.innerHTML = `
-                    ${img}
-                    <div class="card-info">
-                        <h3>${person.firstName} ${person.lastName}</h3>
-                        <p>${person.position}</p>
-                        <div class="card-sites">${siteTags}</div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="edit-btn" onclick="openEditModal('${person.id}')">Modifier</button>
-                        <button class="delete-btn" onclick="deletePerson('${person.id}')">Supprimer</button>
-                    </div>
-                `;
-
-                container.appendChild(card);
-            });
-        }
-
-        function handleDragStart(e) {
-            draggedElement = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML);
-        }
-
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            document.querySelectorAll('.person-card').forEach(card => {
-                card.classList.remove('drag-over');
-            });
-        }
-
-        function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
-            }
-            e.dataTransfer.dropEffect = 'move';
-            
-            if (this !== draggedElement) {
-                this.classList.add('drag-over');
-            }
-            return false;
-        }
-
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-
-        function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
-
-            if (draggedElement !== this) {
-                const draggedId = draggedElement.dataset.id;
-                const targetId = this.dataset.id;
-
-                const draggedIndex = people.findIndex(p => p.id === draggedId);
-                const targetIndex = people.findIndex(p => p.id === targetId);
-
-                const temp = people[draggedIndex];
-                people[draggedIndex] = people[targetIndex];
-                people[targetIndex] = temp;
-
-                renderCards(document.getElementById('siteFilter').value);
-            }
-
-            return false;
-        }
-
-        function openPrintModal() {
-            document.getElementById('printModal').classList.add('active');
-        }
-
-        function closePrintModal() {
-            document.getElementById('printModal').classList.remove('active');
-        }
-
-        function printTrombi() {
-            const printSite = document.getElementById('printSite').value;
-            const showPhoto = document.getElementById('showPhoto').checked;
-            const showName = document.getElementById('showName').checked;
-            const showPosition = document.getElementById('showPosition').checked;
-            const showSite = document.getElementById('showSite').checked;
-            const printTitle = document.getElementById('printTitle').value;
-            const titleColor = document.getElementById('titleColor').value;
-            const titleAlign = document.getElementById('titleAlign').value;
-            const fontFamily = document.getElementById('fontFamily').value;
-
-            const originalTitle = document.getElementById('pageTitle').textContent;
-            const originalTitleColor = document.getElementById('pageTitle').style.color;
-            const originalTitleAlign = document.getElementById('pageTitle').style.textAlign;
-            const originalFont = document.body.style.fontFamily;
-            const originalFilter = document.getElementById('siteFilter').value;
-            const originalHTML = document.getElementById('cardsContainer').innerHTML;
-
-            document.getElementById('pageTitle').textContent = printTitle;
-            document.getElementById('pageTitle').style.color = titleColor;
-            document.getElementById('pageTitle').style.textAlign = titleAlign;
-            document.body.style.fontFamily = fontFamily;
-
-            const filteredPeople = printSite === 'all' 
-                ? people 
-                : people.filter(p => p.sites.includes(printSite));
-
-            const firstLine = filteredPeople.filter(p => !p.secondLine);
-            const secondLinePeople = filteredPeople.filter(p => p.secondLine);
-
-            const container = document.getElementById('cardsContainer');
-            container.innerHTML = '';
-
-            const hasSecondLine = secondLinePeople.length > 0;
-
-            if (hasSecondLine) {
-                if (firstLine.length > 0) {
-                    const firstLineDiv = document.createElement('div');
-                    firstLineDiv.className = 'print-row';
-                    firstLine.forEach(person => {
-                        firstLineDiv.appendChild(createPrintCard(person));
-                    });
-                    container.appendChild(firstLineDiv);
-                }
-
-                const secondLineDiv = document.createElement('div');
-                secondLineDiv.className = 'print-row';
-                secondLinePeople.forEach(person => {
-                    secondLineDiv.appendChild(createPrintCard(person));
-                });
-                container.appendChild(secondLineDiv);
+    function loadData() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                people = JSON.parse(raw);
             } else {
-                filteredPeople.forEach(person => {
-                    container.appendChild(createPrintCard(person));
-                });
+                people = [];
             }
+        } catch (e) {
+            console.error("Erreur lors du chargement local :", e);
+            people = [];
+        }
+        renderCards();
+    }
 
-            const style = document.createElement('style');
-            style.id = 'printStyles';
-            style.textContent = `
-                @media print {
-                    ${!showPhoto ? '.card-image { display: none !important; }' : ''}
-                    ${!showName ? '.card-info h3 { display: none !important; }' : ''}
-                    ${!showPosition ? '.card-info p { display: none !important; }' : ''}
-                    ${!showSite ? '.card-sites { display: none !important; }' : ''}
-                    ${hasSecondLine ? '.cards-grid { display: block !important; }' : ''}
-                }
-            `;
-            document.head.appendChild(style);
+    // ---------- MODALE AJOUT / MODIF ----------
 
-            setTimeout(() => {
-                window.print();
+    function openAddModal() {
+        document.getElementById("modalTitle").textContent = "Ajouter une personne";
+        document.getElementById("personForm").reset();
+        document.getElementById("personId").value = "";
+        const img = document.getElementById("imagePreview");
+        img.style.display = "none";
+        img.src = "";
+        img.dataset.file = "";
+        document.getElementById("secondLine").checked = false;
+        renderSiteCheckboxes();
+        document.getElementById("personModal").classList.add("active");
+    }
 
-                document.getElementById('pageTitle').textContent = originalTitle;
-                document.getElementById('pageTitle').style.color = originalTitleColor;
-                document.getElementById('pageTitle').style.textAlign = originalTitleAlign;
-                document.body.style.fontFamily = originalFont;
-                document.getElementById('siteFilter').value = originalFilter;
-                container.innerHTML = originalHTML;
-                renderCards(originalFilter);
+    function openEditModal(id) {
+        const person = people.find(p => p.id === id);
+        if (!person) return;
 
-                const styleElement = document.getElementById('printStyles');
-                if (styleElement) {
-                    styleElement.remove();
-                }
+        document.getElementById("modalTitle").textContent = "Modifier une personne";
+        document.getElementById("personId").value = person.id;
+        document.getElementById("firstName").value = person.firstName;
+        document.getElementById("lastName").value = person.lastName;
+        document.getElementById("position").value = person.position;
+        document.getElementById("secondLine").checked = !!person.secondLine;
 
-                closePrintModal();
-            }, 100);
+        const img = document.getElementById("imagePreview");
+        if (person.photo) {
+            img.src = person.photo;
+            img.style.display = "block";
+        } else {
+            img.src = "";
+            img.style.display = "none";
+        }
+        img.dataset.file = "";
+
+        renderSiteCheckboxes(person.sites || []);
+        document.getElementById("personModal").classList.add("active");
+    }
+
+    function closeModal() {
+        document.getElementById("personModal").classList.remove("active");
+    }
+
+    function renderSiteCheckboxes(selectedSites = []) {
+        const container = document.getElementById("sitesCheckboxes");
+        container.innerHTML = "";
+
+        sites.forEach(site => {
+            const label = document.createElement("label");
+            label.className = "checkbox-label";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = site;
+            checkbox.checked = selectedSites.includes(site);
+            checkbox.onchange = () => limitSiteSelection();
+
+            const span = document.createElement("span");
+            span.textContent = site;
+
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            container.appendChild(label);
+        });
+    }
+
+    function limitSiteSelection() {
+        const checkboxes = document.querySelectorAll("#sitesCheckboxes input[type='checkbox']");
+        const checked = Array.from(checkboxes).filter(cb => cb.checked);
+
+        if (checked.length > 2) {
+            checked[checked.length - 1].checked = false;
+            alert("Vous ne pouvez sélectionner que 2 sites maximum.");
+        }
+    }
+
+    // ---------- GESTION DE LA PHOTO (aperçu uniquement) ----------
+
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.getElementById("imagePreview");
+            img.src = e.target.result;
+            img.style.display = "block";
+            img.dataset.file = "pending"; // juste pour signaler qu'une nouvelle image a été choisie
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ---------- SAUVEGARDE / SUPPRESSION D'UNE PERSONNE ----------
+
+    async function savePerson(event) {
+        event.preventDefault();
+
+        const id = document.getElementById("personId").value;
+        const firstName = document.getElementById("firstName").value.trim();
+        const lastName = document.getElementById("lastName").value.trim();
+        const position = document.getElementById("position").value.trim();
+        const secondLine = document.getElementById("secondLine").checked;
+
+        const checkboxes = document.querySelectorAll("#sitesCheckboxes input[type='checkbox']:checked");
+        const selectedSites = Array.from(checkboxes).map(cb => cb.value);
+
+        if (selectedSites.length === 0) {
+            alert("Veuillez sélectionner au moins un site.");
+            return;
         }
 
-        function createPrintCard(person) {
-            const card = document.createElement('div');
-            card.className = 'person-card';
-            
-            const img = person.photo 
+        const imagePreview = document.getElementById("imagePreview");
+        let photoUrl = "";
+
+        if (imagePreview && imagePreview.src && imagePreview.style.display !== "none") {
+            // On réutilise directement la DataURL (pas d'upload serveur)
+            photoUrl = imagePreview.src;
+        }
+
+        const personData = {
+            id: id || Date.now().toString(), // id unique simple
+            firstName,
+            lastName,
+            position,
+            photo: photoUrl,
+            sites: selectedSites,
+            secondLine
+        };
+
+        if (id) {
+            // modification
+            const index = people.findIndex(p => p.id === id);
+            if (index !== -1) {
+                people[index] = personData;
+            }
+        } else {
+            // création
+            people.push(personData);
+        }
+
+        saveAll();
+        closeModal();
+        renderCards(document.getElementById("siteFilter").value);
+    }
+
+    async function deletePerson(id) {
+        if (!confirm("Êtes-vous sûr de vouloir supprimer cette personne ?")) return;
+
+        people = people.filter(p => p.id !== id);
+        saveAll();
+        renderCards(document.getElementById("siteFilter").value);
+    }
+
+    // ---------- FILTRE + AFFICHAGE DES CARTES ----------
+
+    function filterBySite() {
+        const filter = document.getElementById("siteFilter").value;
+        renderCards(filter);
+    }
+
+    function renderCards(filter = "all") {
+        const container = document.getElementById("cardsContainer");
+        container.innerHTML = "";
+
+        const filteredPeople = filter === "all"
+            ? people
+            : people.filter(p => (p.sites || []).includes(filter));
+
+        const firstLine = filteredPeople.filter(p => !p.secondLine);
+        const secondLine = filteredPeople.filter(p => p.secondLine);
+        const orderedPeople = [...firstLine, ...secondLine];
+
+        orderedPeople.forEach(person => {
+            const card = document.createElement("div");
+            card.className = "person-card";
+            card.draggable = true;
+            card.dataset.id = person.id;
+
+            card.addEventListener("dragstart", handleDragStart);
+            card.addEventListener("dragend", handleDragEnd);
+            card.addEventListener("dragover", handleDragOver);
+            card.addEventListener("drop", handleDrop);
+            card.addEventListener("dragleave", handleDragLeave);
+
+            const img = person.photo
                 ? `<img src="${person.photo}" alt="${person.firstName} ${person.lastName}" class="card-image">`
                 : `<div class="card-image"></div>`;
 
-            const siteTags = person.sites.map(site => 
+            const siteTags = (person.sites || []).map(site =>
                 `<span class="site-tag">${site}</span>`
-            ).join('');
+            ).join("");
 
             card.innerHTML = `
                 ${img}
@@ -977,13 +757,198 @@
                     <p>${person.position}</p>
                     <div class="card-sites">${siteTags}</div>
                 </div>
+                <div class="card-actions">
+                    <button class="edit-btn" onclick="openEditModal('${person.id}')">Modifier</button>
+                    <button class="delete-btn" onclick="deletePerson('${person.id}')">Supprimer</button>
+                </div>
             `;
 
-            return card;
+            container.appendChild(card);
+        });
+    }
+
+    // ---------- DRAG & DROP ----------
+
+    function handleDragStart(e) {
+        draggedElement = this;
+        this.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/html", this.innerHTML);
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove("dragging");
+        document.querySelectorAll(".person-card").forEach(card => {
+            card.classList.remove("drag-over");
+        });
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = "move";
+
+        if (this !== draggedElement) {
+            this.classList.add("drag-over");
+        }
+        return false;
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove("drag-over");
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
         }
 
-        loadData();
-        subscribeToChanges();
-    </script>
+        if (draggedElement !== this) {
+            const draggedId = draggedElement.dataset.id;
+            const targetId = this.dataset.id;
+
+            const draggedIndex = people.findIndex(p => p.id === draggedId);
+            const targetIndex = people.findIndex(p => p.id === targetId);
+
+            const temp = people[draggedIndex];
+            people[draggedIndex] = people[targetIndex];
+            people[targetIndex] = temp;
+
+            saveAll();
+            renderCards(document.getElementById("siteFilter").value);
+        }
+
+        return false;
+    }
+
+    // ---------- MODALE & IMPRESSION ----------
+
+    function openPrintModal() {
+        document.getElementById("printModal").classList.add("active");
+    }
+
+    function closePrintModal() {
+        document.getElementById("printModal").classList.remove("active");
+    }
+
+    function printTrombi() {
+        const printSite = document.getElementById("printSite").value;
+        const showPhoto = document.getElementById("showPhoto").checked;
+        const showName = document.getElementById("showName").checked;
+        const showPosition = document.getElementById("showPosition").checked;
+        const showSite = document.getElementById("showSite").checked;
+        const printTitle = document.getElementById("printTitle").value;
+        const titleColor = document.getElementById("titleColor").value;
+        const titleAlign = document.getElementById("titleAlign").value;
+        const fontFamily = document.getElementById("fontFamily").value;
+
+        const originalTitle = document.getElementById("pageTitle").textContent;
+        const originalTitleColor = document.getElementById("pageTitle").style.color;
+        const originalTitleAlign = document.getElementById("pageTitle").style.textAlign;
+        const originalFont = document.body.style.fontFamily;
+        const originalFilter = document.getElementById("siteFilter").value;
+        const originalHTML = document.getElementById("cardsContainer").innerHTML;
+
+        document.getElementById("pageTitle").textContent = printTitle;
+        document.getElementById("pageTitle").style.color = titleColor;
+        document.getElementById("pageTitle").style.textAlign = titleAlign;
+        document.body.style.fontFamily = fontFamily;
+
+        const filteredPeople = printSite === "all"
+            ? people
+            : people.filter(p => (p.sites || []).includes(printSite));
+
+        const firstLine = filteredPeople.filter(p => !p.secondLine);
+        const secondLinePeople = filteredPeople.filter(p => p.secondLine);
+
+        const container = document.getElementById("cardsContainer");
+        container.innerHTML = "";
+
+        const hasSecondLine = secondLinePeople.length > 0;
+
+        if (hasSecondLine) {
+            if (firstLine.length > 0) {
+                const firstLineDiv = document.createElement("div");
+                firstLineDiv.className = "print-row";
+                firstLine.forEach(person => {
+                    firstLineDiv.appendChild(createPrintCard(person));
+                });
+                container.appendChild(firstLineDiv);
+            }
+
+            const secondLineDiv = document.createElement("div");
+            secondLineDiv.className = "print-row";
+            secondLinePeople.forEach(person => {
+                secondLineDiv.appendChild(createPrintCard(person));
+            });
+            container.appendChild(secondLineDiv);
+        } else {
+            filteredPeople.forEach(person => {
+                container.appendChild(createPrintCard(person));
+            });
+        }
+
+        const style = document.createElement("style");
+        style.id = "printStyles";
+        style.textContent = `
+            @media print {
+                ${!showPhoto ? ".card-image { display: none !important; }" : ""}
+                ${!showName ? ".card-info h3 { display: none !important; }" : ""}
+                ${!showPosition ? ".card-info p { display: none !important; }" : ""}
+                ${!showSite ? ".card-sites { display: none !important; }" : ""}
+                ${hasSecondLine ? ".cards-grid { display: block !important; }" : ""}
+            }
+        `;
+        document.head.appendChild(style);
+
+        setTimeout(() => {
+            window.print();
+
+            document.getElementById("pageTitle").textContent = originalTitle;
+            document.getElementById("pageTitle").style.color = originalTitleColor;
+            document.getElementById("pageTitle").style.textAlign = originalTitleAlign;
+            document.body.style.fontFamily = originalFont;
+            document.getElementById("siteFilter").value = originalFilter;
+            container.innerHTML = originalHTML;
+            renderCards(originalFilter);
+
+            const styleElement = document.getElementById("printStyles");
+            if (styleElement) {
+                styleElement.remove();
+            }
+
+            closePrintModal();
+        }, 100);
+    }
+
+    function createPrintCard(person) {
+        const card = document.createElement("div");
+        card.className = "person-card";
+
+        const img = person.photo
+            ? `<img src="${person.photo}" alt="${person.firstName} ${person.lastName}" class="card-image">`
+            : `<div class="card-image"></div>`;
+
+        const siteTags = (person.sites || []).map(site =>
+            `<span class="site-tag">${site}</span>`
+        ).join("");
+
+        card.innerHTML = `
+            ${img}
+            <div class="card-info">
+                <h3>${person.firstName} ${person.lastName}</h3>
+                <p>${person.position}</p>
+                <div class="card-sites">${siteTags}</div>
+            </div>
+        `;
+
+        return card;
+    }
+
+    // ---------- INITIALISATION ----------
+
+    loadData();
+</script>
 </body>
 </html>
