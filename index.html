@@ -870,17 +870,20 @@
 
     const pageTitleEl = document.getElementById("pageTitle");
     const logoImg = document.getElementById("printLogoForPrint");
+    const cardsContainer = document.getElementById("cardsContainer");
+    const siteFilter = document.getElementById("siteFilter");
 
+    // Sauvegarde de l'état actuel
     const originalTitle = pageTitleEl.textContent;
     const originalTitleColor = pageTitleEl.style.color;
     const originalTitleAlign = pageTitleEl.style.textAlign;
     const originalFont = document.body.style.fontFamily;
-    const originalFilter = document.getElementById("siteFilter").value;
-    const originalHTML = document.getElementById("cardsContainer").innerHTML;
+    const originalFilter = siteFilter.value;
+    const originalHTML = cardsContainer.innerHTML;
     const originalLogoDisplay = logoImg.style.display;
     const originalLogoSrc = logoImg.src;
 
-    // Appliquer les options
+    // Appliquer les options de titre
     pageTitleEl.textContent = printTitle;
     pageTitleEl.style.color = titleColor;
     pageTitleEl.style.textAlign = titleAlign;
@@ -894,17 +897,58 @@
         logoImg.style.display = "none";
     }
 
-    // ... (on laisse la suite de la fonction, voir partie 2 pour la grille)
+    // Filtrer les personnes par site
+    const filteredPeople = printSite === "all"
+        ? people
+        : people.filter(p => (p.sites || []).includes(printSite));
 
-            setTimeout(() => {
+    // Première ligne = secondLine = false, deuxième ligne = secondLine = true
+    const firstLine = filteredPeople.filter(p => !p.secondLine);
+    const secondLinePeople = filteredPeople.filter(p => p.secondLine);
+    const orderedPeople = [...firstLine, ...secondLinePeople];
+
+    // On reconstruit les cartes dans la grille (une seule grille pour tout le monde)
+    cardsContainer.innerHTML = "";
+    orderedPeople.forEach(person => {
+        cardsContainer.appendChild(createPrintCard(person));
+    });
+
+    // Adapter un peu la taille selon le nombre
+    const count = orderedPeople.length;
+    let cardScale = 1;
+    if (count > 8 && count <= 16) {
+        cardScale = 0.9;
+    } else if (count > 16) {
+        cardScale = 0.8;
+    }
+
+    // Styles spécifiques impression (on complète ton @media print existant)
+    const style = document.createElement("style");
+    style.id = "printStyles";
+    style.textContent = `
+        @media print {
+            .person-card {
+                transform: scale(${cardScale});
+                transform-origin: top left;
+            }
+            ${!showPhoto ? ".card-image { display: none !important; }" : ""}
+            ${!showName ? ".card-info h3 { display: none !important; }" : ""}
+            ${!showPosition ? ".card-info p { display: none !important; }" : ""}
+            ${!showSite ? ".card-sites { display: none !important; }" : ""}
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Lancer l'impression puis restaurer l'état initial
+    setTimeout(() => {
         window.print();
 
         pageTitleEl.textContent = originalTitle;
         pageTitleEl.style.color = originalTitleColor;
         pageTitleEl.style.textAlign = originalTitleAlign;
         document.body.style.fontFamily = originalFont;
-        document.getElementById("siteFilter").value = originalFilter;
-        document.getElementById("cardsContainer").innerHTML = originalHTML;
+        siteFilter.value = originalFilter;
+        cardsContainer.innerHTML = originalHTML;
         renderCards(originalFilter);
 
         logoImg.style.display = originalLogoDisplay;
