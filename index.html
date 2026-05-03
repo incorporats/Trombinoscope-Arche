@@ -368,7 +368,8 @@
 </head>
 <body>
     <div class="container">
-        <h1 id="pageTitle" style="color: var(--color-text-accent);">Trombinoscope</h1>
+        <img id="printLogoForPrint" style="max-height: 80px; margin-bottom: 10px; display: none;">
+        <h1 id="pageTitle" style="color: var(--color-text-accent)">Trombinoscope</h1>
 
         <div class="controls">
             <button class="btn" onclick="openAddModal()">+ Ajouter une personne</button>
@@ -856,95 +857,67 @@
         document.getElementById("printModal").classList.remove("active");
     }
 
-    function printTrombi() {
-        const printSite = document.getElementById("printSite").value;
-        const showPhoto = document.getElementById("showPhoto").checked;
-        const showName = document.getElementById("showName").checked;
-        const showPosition = document.getElementById("showPosition").checked;
-        const showSite = document.getElementById("showSite").checked;
-        const printTitle = document.getElementById("printTitle").value;
-        const titleColor = document.getElementById("titleColor").value;
-        const titleAlign = document.getElementById("titleAlign").value;
-        const fontFamily = document.getElementById("fontFamily").value;
+   function printTrombi() {
+    const printSite = document.getElementById("printSite").value;
+    const showPhoto = document.getElementById("showPhoto").checked;
+    const showName = document.getElementById("showName").checked;
+    const showPosition = document.getElementById("showPosition").checked;
+    const showSite = document.getElementById("showSite").checked;
+    const printTitle = document.getElementById("printTitle").value;
+    const titleColor = document.getElementById("titleColor").value;
+    const titleAlign = document.getElementById("titleAlign").value;
+    const fontFamily = document.getElementById("fontFamily").value;
 
-        const originalTitle = document.getElementById("pageTitle").textContent;
-        const originalTitleColor = document.getElementById("pageTitle").style.color;
-        const originalTitleAlign = document.getElementById("pageTitle").style.textAlign;
-        const originalFont = document.body.style.fontFamily;
-        const originalFilter = document.getElementById("siteFilter").value;
-        const originalHTML = document.getElementById("cardsContainer").innerHTML;
+    const pageTitleEl = document.getElementById("pageTitle");
+    const logoImg = document.getElementById("printLogoForPrint");
 
-        document.getElementById("pageTitle").textContent = printTitle;
-        document.getElementById("pageTitle").style.color = titleColor;
-        document.getElementById("pageTitle").style.textAlign = titleAlign;
-        document.body.style.fontFamily = fontFamily;
+    const originalTitle = pageTitleEl.textContent;
+    const originalTitleColor = pageTitleEl.style.color;
+    const originalTitleAlign = pageTitleEl.style.textAlign;
+    const originalFont = document.body.style.fontFamily;
+    const originalFilter = document.getElementById("siteFilter").value;
+    const originalHTML = document.getElementById("cardsContainer").innerHTML;
+    const originalLogoDisplay = logoImg.style.display;
+    const originalLogoSrc = logoImg.src;
 
-        const filteredPeople = printSite === "all"
-            ? people
-            : people.filter(p => (p.sites || []).includes(printSite));
+    // Appliquer les options
+    pageTitleEl.textContent = printTitle;
+    pageTitleEl.style.color = titleColor;
+    pageTitleEl.style.textAlign = titleAlign;
+    document.body.style.fontFamily = fontFamily;
 
-        const firstLine = filteredPeople.filter(p => !p.secondLine);
-        const secondLinePeople = filteredPeople.filter(p => p.secondLine);
+    // Appliquer le logo si choisi
+    if (printLogoDataUrl) {
+        logoImg.src = printLogoDataUrl;
+        logoImg.style.display = "block";
+    } else {
+        logoImg.style.display = "none";
+    }
 
-        const container = document.getElementById("cardsContainer");
-        container.innerHTML = "";
+    // ... (on laisse la suite de la fonction, voir partie 2 pour la grille)
 
-        const hasSecondLine = secondLinePeople.length > 0;
+            setTimeout(() => {
+        window.print();
 
-        if (hasSecondLine) {
-            if (firstLine.length > 0) {
-                const firstLineDiv = document.createElement("div");
-                firstLineDiv.className = "print-row";
-                firstLine.forEach(person => {
-                    firstLineDiv.appendChild(createPrintCard(person));
-                });
-                container.appendChild(firstLineDiv);
-            }
+        pageTitleEl.textContent = originalTitle;
+        pageTitleEl.style.color = originalTitleColor;
+        pageTitleEl.style.textAlign = originalTitleAlign;
+        document.body.style.fontFamily = originalFont;
+        document.getElementById("siteFilter").value = originalFilter;
+        document.getElementById("cardsContainer").innerHTML = originalHTML;
+        renderCards(originalFilter);
 
-            const secondLineDiv = document.createElement("div");
-            secondLineDiv.className = "print-row";
-            secondLinePeople.forEach(person => {
-                secondLineDiv.appendChild(createPrintCard(person));
-            });
-            container.appendChild(secondLineDiv);
-        } else {
-            filteredPeople.forEach(person => {
-                container.appendChild(createPrintCard(person));
-            });
+        logoImg.style.display = originalLogoDisplay;
+        logoImg.src = originalLogoSrc;
+
+        const styleElement = document.getElementById("printStyles");
+        if (styleElement) {
+            styleElement.remove();
         }
 
-        const style = document.createElement("style");
-        style.id = "printStyles";
-        style.textContent = `
-            @media print {
-                ${!showPhoto ? ".card-image { display: none !important; }" : ""}
-                ${!showName ? ".card-info h3 { display: none !important; }" : ""}
-                ${!showPosition ? ".card-info p { display: none !important; }" : ""}
-                ${!showSite ? ".card-sites { display: none !important; }" : ""}
-                ${hasSecondLine ? ".cards-grid { display: block !important; }" : ""}
-            }
-        `;
-        document.head.appendChild(style);
-
-        setTimeout(() => {
-            window.print();
-
-            document.getElementById("pageTitle").textContent = originalTitle;
-            document.getElementById("pageTitle").style.color = originalTitleColor;
-            document.getElementById("pageTitle").style.textAlign = originalTitleAlign;
-            document.body.style.fontFamily = originalFont;
-            document.getElementById("siteFilter").value = originalFilter;
-            container.innerHTML = originalHTML;
-            renderCards(originalFilter);
-
-            const styleElement = document.getElementById("printStyles");
-            if (styleElement) {
-                styleElement.remove();
-            }
-
-            closePrintModal();
-        }, 100);
-    }
+        closePrintModal();
+    }, 100);
+}
 
     function createPrintCard(person) {
         const card = document.createElement("div");
